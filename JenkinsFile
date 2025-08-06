@@ -1,0 +1,69 @@
+pipeline { 
+    agent any 
+ 
+    environment { 
+        REGISTRY = "docker.io"   
+        IMAGE_NAME = "user-service" 
+        IMAGE_TAG = "latest" 
+        REGISTRY_CREDENTIALS = 'docker-credentials'   
+    } 
+ 
+    stages { 
+        stage('Checkout') { 
+            steps { 
+                sh 'echo passed'
+        //git branch: 'main', url: 'https://github.com/muthubharathi740/gitrepo.git'
+ 
+            } 
+        } 
+ 
+        stage('Build Docker Image') { 
+            steps { 
+                script { 
+                    docker.build(
+                      "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}",
+                      "-f microservices/user-service/Dockerfile ."
+                      ) 
+
+                } 
+            } 
+        } 
+ 
+        stage('Push Docker Image') { 
+            steps { 
+                script { 
+                    docker.withRegistry('', REGISTRY_CREDENTIALS) { 
+                        
+docker.image("${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}").push() 
+                    } 
+                } 
+            } 
+        } 
+ 
+        stage('Deploy to Kubernetes') { 
+            steps { 
+                script { 
+                    // Apply Kubernetes deployment using kubectl 
+                    sh """ 
+                    kubectl apply -f 
+kubernetes-manifests/deployments/user-service-deployment.yaml 
+                    kubectl rollout restart deployment user-service 
+                    """ 
+                } 
+            } 
+        } 
+
+ 
+
+
+    } 
+ 
+    post { 
+        success { 
+            echo "Build and Deployment Successful!" 
+        } 
+        failure { 
+            echo "Build or Deployment Failed!" 
+        } 
+    } 
+}
